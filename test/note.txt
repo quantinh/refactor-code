@@ -1,0 +1,3 @@
+# my $rv = $sth->execute() or die $DBI::errstr;
+# ($rv < 0) ? print $DBI::errstr : print "Operation done successfully\n";
+# $sth->finish();
