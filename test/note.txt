@@ -1,3 +1,111 @@
 # my $rv = $sth->execute() or die $DBI::errstr;
 # ($rv < 0) ? print $DBI::errstr : print "Operation done successfully\n";
 # $sth->finish();
+
+sub add {
+  my $self = shift;
+  # Kiểm tra dữ liệu từ form
+  my $validation = $self->validation;
+  $validation->required('first_name')->like(qr/^[a-zA-Z]+$/)->size(1, 50);
+  $validation->required('last_name')->like(qr/^[a-zA-Z]+$/)->size(1, 50);
+  my $first_name_error = $validation->error('first_name') ? join(',', @{$validation->error('first_name')}) : '';
+  my $last_name_error = $validation->error('last_name') ? join(',', @{$validation->error('last_name')}) : '';
+  # Nếu có lỗi, hiển thị thông báo lỗi trên form
+  if ($validation->has_error) {
+    $self->stash(
+      error => 'Có lỗi xảy ra. Vui lòng kiểm tra lại thông tin.',
+      first_name_error => $first_name_error,
+      last_name_error => $last_name_error
+    );
+    # $self->stash(
+    #   error => 'Có lỗi xảy ra. Vui lòng kiểm tra lại thông tin.',
+    #   first_name_error => join(',', @{$validation->error('first_name')}),
+    #   last_name_error => join(',', @{$validation->error('last_name')})
+    # );
+    return $self->render(template => 'myTemplates/add');
+  } else {
+    # use function connect database
+    # my $dbh = connect_db_pg();
+    # # Lấy dữ liệu từ form input
+    # my $first_name = $self->param('first_name');
+    # my $last_name = $self->param('last_name');
+    # my $query = qq(INSERT INTO actor (first_name, last_name, last_update) VALUES ('$first_name', '$last_name', NOW()););
+    # my $sth = $dbh->prepare($query);
+    # my $rv = $sth->execute() or die $DBI::errstr;
+    # ($rv < 0) ? print $DBI::errstr : print "Operation done successfully\n";
+    # $sth->finish();
+    # $dbh->disconnect();
+    # return $self->flash(success => 'Thêm mới actor thành công');
+    # return $self->redirect_to('/');
+  }
+}
+
+my $first_name_error = $validation->error('first_name') ? join(',', @{$validation->error('first_name')}) : '';
+my $last_name_error = $validation->error('last_name') ? join(',', @{$validation->error('last_name')}) : '';
+
+sub add {
+  my $self = shift;
+
+  # Kiểm tra xem có submit form chưa
+  if ($self->req->method eq 'POST') {
+
+    # Lấy thông tin từ form
+    my $first_name = $self->param('first_name');
+    my $last_name  = $self->param('last_name');
+
+    # Tạo object validation
+    my $validation = $self->validation;
+    $validation->required('first_name')->like(qr/^[a-zA-Z]+$/)->message('First name must contain only letters');
+    $validation->required('last_name')->like(qr/^[a-zA-Z]+$/)->message('Last name must contain only letters');
+
+    # Kiểm tra xem thông tin nhập vào có hợp lệ không
+    if ($validation->has_error) {
+
+      # Nếu có lỗi, hiển thị lại form và thông báo lỗi
+      $self->stash(
+        error          => 'Có lỗi xảy ra. Vui lòng kiểm tra lại thông tin.',
+        first_name     => $first_name,
+        last_name      => $last_name,
+        first_name_err => $validation->error('first_name'),
+        last_name_err  => $validation->error('last_name')
+      );
+      return $self->render(template => 'actor/add');
+    }
+
+    # Thêm thông tin vào database
+    my $actor = $self->db->resultset('Actor')->create(
+      {
+        first_name => $first_name,
+        last_name  => $last_name
+      }
+    );
+
+    # Chuyển hướng về trang danh sách actors
+    return $self->redirect_to('actors');
+  }
+
+  # Hiển thị form thêm mới
+  $self->render(template => 'actor/add');
+}
+
+% layout 'default';
+
+<h1>Add Actor</h1>
+
+% if (my $error = stash('error')) {
+  <div class="alert alert-danger"><%= $error %></div>
+% }
+
+<form method="post" action="<%= url_for('add_actor')->to_abs %>">
+  <div class="form-group">
+    <label for="first_name">First Name</label>
+    <input type="text" class="form-control <%== stash('first_name_err') ? 'is-invalid' : '' %>" id="first_name" name="first_name" value="<%= stash('first_name') %>">
+    <% if (my $first_name_err = stash('first_name_err')) { %>
+      <div class="invalid-feedback"><%= join(',', @$first_name_err) %></div>
+    <% } %>
+  </div>
+  <div class="form-group">
+    <label for="last_name">Last Name</label>
+    <input type="text" class="form-control <%== stash('last_name_err') ? 'is-invalid' : '' %>" id="last_name" name="last_name" value="<%= stash('last_name') %>">
+    <% if (my $last_name_err = stash('last_name_err')) { %>
+      <div class

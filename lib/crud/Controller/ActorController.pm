@@ -50,72 +50,39 @@ sub fromAdd {
 # Action Add
 sub add {
   my $self = shift;
-  # use function connect database
-  my $dbh = connect_db_pg();# kết nối tới cơ sở dữ liệu PostgreSQL
-  # Code new ======================================
+  # Kiểm tra xem có submit form chưa
+  if ($self->req->method eq 'POST') {
 
-  # use function connect database
-  # my $pg = Mojo::Pg->new('postgresql://postgres:123456@localhost/learning-perl');
-  # Lấy dữ liệu từ form input
-  my $first_name = $self->param('first_name');
-  my $last_name = $self->param('last_name');
-
-  # Sử dụng đối tượng validation trong Mojolicious để kiểm tra dữ liệu
-  my $validation = $self->validation;
-  $validation->required('first_name')->like(qr/^[a-zA-Z]+$/)->size(1, 50);
-  $validation->required('last_name')->like(qr/^[a-zA-Z]+$/)->size(1, 50);
-
-  # Kiểm tra có lỗi hay không
-  if ($validation->has_error) {
-    # Nếu có lỗi, hiển thị thông báo lỗi
-    $self->render(
-      text => 'có lỗi',
-      # template => 'myTemplates/add',
-      err_msg => $validation->error('first_name') || $validation->error('last_name')
-    );
-  } else {
-    # Nếu không có lỗi, insert dữ liệu vào cơ sở dữ liệu
-    # Thực hiện insert vào database
+    # Lấy thông tin từ form
+    my $first_name = $self->param('first_name');
+    my $last_name  = $self->param('last_name');
+    # Tạo object validation
+    my $validation = $self->validation;
+    $validation->required('first_name')->like(qr/^[a-zA-Z]+$/)->message('First name must contain only letters');
+    $validation->required('last_name')->like(qr/^[a-zA-Z]+$/)->message('Last name must contain only letters');
+    # Kiểm tra xem thông tin nhập vào có hợp lệ không
+    if ($validation->has_error) {
+      # Nếu có lỗi, hiển thị lại form và thông báo lỗi
+      $self->stash(
+        error          => 'Có lỗi xảy ra. Vui lòng kiểm tra lại thông tin.',
+        first_name     => $first_name,
+        last_name      => $last_name,
+        first_name_err => $validation->error('first_name'),
+        last_name_err  => $validation->error('last_name')
+      );
+      return $self->render(template => 'myTemplates/add');
+    }
+    my $dbh = connect_db_pg();
     my $query = qq(INSERT INTO actor (first_name, last_name, last_update) VALUES ('$first_name', '$last_name', NOW()););
     my $sth = $dbh->prepare($query);
-    # Show error if false 
     my $rv = $sth->execute() or die $DBI::errstr;
     ($rv < 0) ? print $DBI::errstr : print "Operation done successfully\n";
     $sth->finish();
     $dbh->disconnect();
-    # Lưu thông báo vào flash và chuyển hướng đến trang hiển thị danh sách bảng ghi
-    $self->flash(success => 'Thêm mới actor thành công');
+    return $self->flash(success => 'Thêm mới actor thành công');
     return $self->redirect_to('/');
-    # Hiển thị thông báo thành công
-    # $self->render(
-    #   text => 'đã thêm vào db',
-    #   # template => 'myTemplates/list',
-    #   err_msg => 'Data inserted successfully'
-    # );
   }
-  print "return abc,\n";
-  # Hiển thị thông báo thành công
-  # $self->render(
-  #   template => 'myTemplates/list',
-  #   success => $self->flash(success => 'Thêm mới actor thành công')
-  # );
-  # Code old
-  # my $first_name = $self->param('first_name');
-  # my $last_name = $self->param('last_name');
-  # my $last_update = $self->param('last_update');
-
-  # string query to database
-  # my $query = qq(INSERT INTO actor (first_name, last_name, last_update) VALUES ('$first_name', '$last_name', NOW()););
-  # my $sth = $dbh->prepare($query);
-  # # Show error if false 
-  # my $rv = $sth->execute() or die $DBI::errstr;
-  # ($rv < 0) ? print $DBI::errstr : print "Operation done successfully\n";
-  # $sth->finish();
-  # $dbh->disconnect();
-
-  # Lưu thông báo vào flash và chuyển hướng đến trang hiển thị danh sách bảng ghi
-  $self->flash(success => 'Thêm mới actor thành công');
-  return $self->redirect_to('/');
+    $self->render(template => 'myTemplates/add');
 }
 # Action Delete
 sub delete {
